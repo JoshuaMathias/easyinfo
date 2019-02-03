@@ -1,3 +1,4 @@
+# %%writefile easyinfo/utils.py
 """
 Easy debug printing, timing, and variable attributes (length, width) for Python.
 
@@ -5,7 +6,10 @@ Easy debug printing, timing, and variable attributes (length, width) for Python.
 import sys
 import inspect
 import time
-from IPython.core.display import display, HTML
+# from IPython.core.display import display, HTML
+import pickle
+import os
+import re
 
 # Confounding variable names that we don't want from the stack.
 # Not a comprehensive or generalized list
@@ -19,7 +23,10 @@ def prev_frame(num_back=1):
   return curr_frame
 
 # Print name of variable with value
-def vname(var, num_back=2, func_name='vname'):
+# arg_i is the index of the argument in the function being called num_back frames ago
+#  if arg_i is -1, the name receiving variable of the receiving variable is returned
+#  e.g. var_name = vname(arg_i=-1) => returns 'var_name'
+def vname(var, num_back=2, func_name='vname', arg_i=0):
         """
         Gets the name of var. Does it from the out most frame inner-wards.
         :param var: variable to get name from.
@@ -30,10 +37,11 @@ def vname(var, num_back=2, func_name='vname'):
 #             if len(names) > 0:
 #                 return names[0]
         code = inspect.getframeinfo(prev_frame(num_back))[3][0]
-        var_start = code.find(func_name+'(') + len(func_name) + 1 # +1 for (
-        var_end = code.find(')', var_start)
-        var_name = code[var_start:var_end]
-        return var_name
+        args_start = code.find(func_name+'(') + len(func_name) + 1 # +1 for (
+        args_end = code.find(')', args_start)
+        args_str = code[args_start:args_end]
+        arg_name = args_str.split(",")[arg_i].strip()
+        return arg_name
 
 def vline(num_back=2): # Credit to http://code.activestate.com/recipes/145297-grabbing-the-current-line-number-easily/
     """Returns the current line number in our program."""
@@ -63,14 +71,14 @@ def vstr(var, name=None, val=None, func_name='vstr', num_back=3):
   msg = None
   if not name:
     name = vname(var, num_back, func_name)
-  msg = name + ": " + str(val)
+  msg = name + " (line " + str(vline(num_back)) + ")" + ": " + str(val)
   return msg
   
 def vprint(var, name=None, val=None, **kwargs):
   msg = vstr(var, name, val, func_name='vprint', num_back=4)
   print(msg, **kwargs)
   
-def lstr(var, name=None, val=None, max_depth=10, func_name='vstr', num_back=3):
+def lstr(var, name=None, val=None, max_depth=10, func_name='lstr', num_back=3):
   attr_name = 'len'
   if not val:
     if hasattr(var, '__len__'):
@@ -102,11 +110,11 @@ def lstr(var, name=None, val=None, max_depth=10, func_name='vstr', num_back=3):
       val = var.size
       attr_name = 'size'
     else:
+      attr_name = 'value'
       val = var
   if not name:
     name = vname(var, num_back, func_name)
-  msg =  name + " (line " + "<a href='#'>"+str(vline(num_back))+"</a>" + ") " + attr_name + ": " + str(val)
-  display(HTML(msg))
+  msg = name + " (line " + str(vline(num_back)) + ") " + attr_name + ": " + str(val)
   return msg
   
 # Print len
@@ -115,13 +123,13 @@ def lprint(var, name=None, val=None, **kwargs):
   print(msg, **kwargs)
 
 # Get str of all printing functions output
-def astr(var, name=None, val=None):
-  msg = lstr(var, name, val) + "\n" + vstr(var, "\t", val)
+def astr(var, name=None, val=None, func_name='astr'):
+  msg = lstr(var, name, val, func_name=func_name) + "\n" + vstr(var, "\t", val, func_name=func_name)
   return msg
 
 # Call all printing functions for variable
 def aprint(var, name=None, val=None, **kwargs):
-  msg = astr(var, name, val)
+  msg = astr(var, name, val, func_name='aprint')
   print(msg, **kwargs)
 
 def vlen(var):
@@ -163,6 +171,61 @@ def vwid(var):
   except TypeError: # e.g. set that doesn't support indexing
     return 0
   return val
+
+# Use pickle to save an object
+# If filepath include a filename at end, use that filename
+# If filepath is a directory, save object as filepath/variable_name.pkl
+  # Also, save directory as a global variable _save_dir so that it's only needed once
+# If no filepath is given, save object as variable_name.pkl in current dir
+_save_dir = ''
+def vsave(obj, filepath=None, verbose=True):
+  var_name = vname(obj, num_back=3, func_name='vsave')
+  ext = None
+  if filepath:
+    filename, ext = os.path.splitext(filepath)
+    if not ext: # If no extension, assume directory
+      global _save_dir
+      _save_dir = filename # Save directory for future calls
+  else:
+    filepath = _save_dir
+  
+  if not ext: # Is a filename specified with extension?
+    # If not, use argument name and .pkl
+    filename = var_name + '.pkl'
+    filepath = os.path.join(_save_dir, filename) # Use specified or saved directory
+  with open(filepath, 'wb') as bin_file:
+    pickle.dump(obj, bin_file)
+  if verbose:
+    path_name = vname(obj, num_back=3, func_name='vsave')
+    print("To load saved variable: "+var_name+" = vload('"+filepath+"')")
+
+# Load pickled object from filename
+# If argument is not a string, use name of argument to assume filename
+# If no arguments are given or filepath is a string but with no extension,
+#   use receiving variable name as filename (e.g. 'test_var.pkl' for test_var = vload())
+# Also, for a filepath with no extension, use it as the directory
+# load_dir can be specified if different than _save_dir
+def vload(filepath=float('inf'), verbose=True, load_dir=None):
+  if not isinstance(filepath, str): # If None or an object
+    if filepath == float('inf'): # No filepath argument provided
+      # Use name of receiving variable
+      filepath = vname(filepath, num_back=3, func_name='vload', arg_i=-1)
+    else:
+      filepath = vname(filepath, num_back=3, func_name='vload') + ".pkl"
+    if not load_dir:
+      filepath = os.path.join(_save_dir, filepath)
+  else:
+    filename, ext = os.path.splitext(filepath)
+    if not ext: # Is filepath a directory?
+      load_dir = filename
+      filepath = vname(filepath, num_back=3, func_name='vload', arg_i=-1)
+  if load_dir:
+    filepath = os.path.join(load_dir, filepath)
+  with open(filepath, 'rb') as bin_file:
+    loaded_var = pickle.load(bin_file)
+    if verbose:
+      lprint(loaded_var, "Loaded variable from "+filepath)
+    return loaded_var
 
 _start_time = time.time()
 _start_stack = [_start_time]
