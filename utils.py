@@ -177,15 +177,37 @@ def vwid(var):
 # If filepath is a directory, save object as filepath/variable_name.pkl
   # Also, save directory as a global variable _save_dir so that it's only needed once
 # If no filepath is given, save object as variable_name.pkl in current dir
+# If filepath ends in .txt, save as plain text.
+# If filepath ends in .csv, save as csv.
+# If filepath is just an extension: '.pkl', '.txt' or '.csv', save as that type of file
+#   using the variable name as file basename
 _save_dir = ''
 def vsave(obj, filepath=None, verbose=True):
   var_name = vname(obj, num_back=3, func_name='vsave')
   ext = None
   if filepath:
     filename, ext = os.path.splitext(filepath)
+    if filename.startswith('.'): # If only extension was provided
+      ext = filename
+      filename = var_name
     if not ext: # If no extension, assume directory
       global _save_dir
       _save_dir = filename # Save directory for future calls
+    elif ext == '.txt':
+      filepath = filename+'.txt'
+      with open(filepath, 'w') as txt_file:
+        if isinstance(obj, list):
+          for item in obj:
+            txt_file.write(str(item)+"\n")
+        elif isinstance(obj, dict):
+          for key, val in obj.items():
+            txt_file.write(str(key)+": "+str(val)+"\n")
+        else:
+          txt_file.write(str(obj)+"\n")
+        if verbose:
+          print("To load saved variable: "+var_name+" = vload('"+filepath+"')")
+        return
+        
   else:
     filepath = _save_dir
   
@@ -196,7 +218,6 @@ def vsave(obj, filepath=None, verbose=True):
   with open(filepath, 'wb') as bin_file:
     pickle.dump(obj, bin_file)
   if verbose:
-    path_name = vname(obj, num_back=3, func_name='vsave')
     print("To load saved variable: "+var_name+" = vload('"+filepath+"')")
 
 # Load pickled object from filename
