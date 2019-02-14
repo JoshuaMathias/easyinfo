@@ -227,6 +227,7 @@ def vsave(obj, filepath=None, verbose=True):
 # Also, for a filepath with no extension, use it as the directory
 # load_dir can be specified if different than _save_dir
 def vload(filepath=float('inf'), verbose=True, load_dir=None):
+  ext = ''
   if not isinstance(filepath, str): # If None or an object
     if filepath == float('inf'): # No filepath argument provided
       # Use name of receiving variable
@@ -237,16 +238,26 @@ def vload(filepath=float('inf'), verbose=True, load_dir=None):
       filepath = os.path.join(_save_dir, filepath)
   else:
     filename, ext = os.path.splitext(filepath)
+    if filename.startswith('.'): # If only extension was provided
+      ext = filename
+      filename = var_name
     if not ext: # Is filepath a directory?
       load_dir = filename
       filepath = vname(filepath, num_back=3, func_name='vload', arg_i=-1)
   if load_dir:
     filepath = os.path.join(load_dir, filepath)
-  with open(filepath, 'rb') as bin_file:
-    loaded_var = pickle.load(bin_file)
-    if verbose:
-      lprint(loaded_var, "Loaded variable from "+filepath)
-    return loaded_var
+  if ext == '.txt':
+    with open(filepath, 'r', newline='') as txt_file:
+      loaded_var = []
+      for line in txt_file:
+        loaded_var.append(line.strip())
+      return loaded_var
+  else:
+    with open(filepath, 'rb') as bin_file:
+      loaded_var = pickle.load(bin_file)
+      if verbose:
+        lprint(loaded_var, "Loaded variable from "+filepath)
+      return loaded_var
 
 _start_time = time.time()
 _start_stack = [_start_time]
