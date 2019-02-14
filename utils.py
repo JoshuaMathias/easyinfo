@@ -83,7 +83,7 @@ def lstr(var, name=None, val=None, max_depth=10, func_name='lstr', num_back=3):
   if not val:
     if hasattr(var, '__len__'):
       val = str(len(var))
-      if len(var) > 0 and not isinstance(var[0], str):
+      if len(var) > 0 and hasattr(var, '__getitem__') and not isinstance(var[0], str):
         inner_var = var[0]
         depth = 0
         var_len = vlen(inner_var)
