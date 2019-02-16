@@ -200,7 +200,6 @@ def vsave(obj, filepath=None, verbose=True, sort=True):
           for item in obj:
             txt_file.write(str(item)+"\n")
         elif isinstance(obj, dict):
-          vprint(obj)
           items = obj.items()
           if sort:
             items = sorted(items, key=lambda kv: kv[1], reverse=True)
