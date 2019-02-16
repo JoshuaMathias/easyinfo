@@ -182,7 +182,7 @@ def vwid(var):
 # If filepath is just an extension: '.pkl', '.txt' or '.csv', save as that type of file
 #   using the variable name as file basename
 _save_dir = ''
-def vsave(obj, filepath=None, verbose=True):
+def vsave(obj, filepath=None, verbose=True, sort=True):
   var_name = vname(obj, num_back=3, func_name='vsave')
   ext = None
   if filepath:
@@ -200,7 +200,12 @@ def vsave(obj, filepath=None, verbose=True):
           for item in obj:
             txt_file.write(str(item)+"\n")
         elif isinstance(obj, dict):
-          for key, val in obj.items():
+          vprint(obj)
+          items = obj.items()
+          if sort:
+            items = sorted(items, key=lambda kv: kv[1], reverse=True)
+            
+          for key, val in items:
             txt_file.write(str(key)+": "+str(val)+"\n")
         else:
           txt_file.write(str(obj)+"\n")
