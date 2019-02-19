@@ -9,7 +9,7 @@ import time
 # from IPython.core.display import display, HTML
 import pickle
 import os
-import re
+import regex as re
 
 # Confounding variable names that we don't want from the stack.
 # Not a comprehensive or generalized list
@@ -27,21 +27,21 @@ def prev_frame(num_back=1):
 #  if arg_i is -1, the name receiving variable of the receiving variable is returned
 #  e.g. var_name = vname(arg_i=-1) => returns 'var_name'
 def vname(var, num_back=2, func_name='vname', arg_i=0):
-        """
-        Gets the name of var. Does it from the out most frame inner-wards.
-        :param var: variable to get name from.
-        :return: string
-        """
-#         for fi in reversed(inspect.stack()):
-#             names = [var_name for var_name, var_val in fi.frame.f_locals.items() if var_val is var and var_name not in default_var_names and var_name[0] != '_']
-#             if len(names) > 0:
-#                 return names[0]
-        code = inspect.getframeinfo(prev_frame(num_back))[3][0]
-        args_start = code.find(func_name+'(') + len(func_name) + 1 # +1 for (
-        args_end = code.find(')', args_start)
-        args_str = code[args_start:args_end]
-        arg_name = args_str.split(",")[arg_i].strip()
-        return arg_name
+  code = inspect.getframeinfo(prev_frame(num_back))[3][0]
+  var_name = ''
+  if arg_i < 0:
+    receiving_pattern = r'(\p{L}\w+)\s*=\s*'+func_name+r'\s*\('
+    var_search = re.search(receiving_pattern, code)
+    if var_search:
+      var_name = var_search.group(1)
+      if not var_name:
+        var_name = ''
+  else:
+    args_start = code.find(func_name+'(') + len(func_name) + 1 # +1 for (
+    args_end = code.find(')', args_start)
+    args_str = code[args_start:args_end]
+    var_name = args_str.split(",")[arg_i].strip()
+  return var_name
 
 def vline(num_back=2): # Credit to http://code.activestate.com/recipes/145297-grabbing-the-current-line-number-easily/
     """Returns the current line number in our program."""
@@ -81,7 +81,7 @@ def vprint(var, name=None, val=None, **kwargs):
 def lstr(var, name=None, val=None, max_depth=10, func_name='lstr', num_back=3):
   attr_name = 'len'
   if not val:
-    if hasattr(var, '__len__'):
+    if hasattr(var, '__len__') and not hasattr(var, 'shape'):
       val = str(len(var))
       if len(var) > 0 and hasattr(var, '__getitem__') and not isinstance(var[0], str):
         inner_var = var[0]
@@ -159,6 +159,8 @@ def vwid(var):
       return 0
     elif hasattr(var, 'shape'):
       val = var.shape
+      if len(val) > 1:
+        val = val[1]
     elif hasattr(var, '__len__'):
       if len(var) > 0:
         val = vlen(var[0])
@@ -171,6 +173,11 @@ def vwid(var):
   except TypeError: # e.g. set that doesn't support indexing
     return 0
   return val
+
+# Turn 'path/filename.txt' into 'path/filename_suf.txt'
+def add_file_suffix(filename, suf):
+  name, ext = os.path.splitext(filename)
+  return name+"_"+str(suf)+ext
 
 # Use pickle to save an object
 # If filepath include a filename at end, use that filename
@@ -232,22 +239,24 @@ def vsave(obj, filepath=None, verbose=True, sort=True):
 # load_dir can be specified if different than _save_dir
 def vload(filepath=float('inf'), verbose=True, load_dir=None):
   ext = ''
+  if not load_dir:
+    load_dir = _save_dir
   if not isinstance(filepath, str): # If None or an object
     if filepath == float('inf'): # No filepath argument provided
       # Use name of receiving variable
       filepath = vname(filepath, num_back=3, func_name='vload', arg_i=-1)
     else:
-      filepath = vname(filepath, num_back=3, func_name='vload') + ".pkl"
-    if not load_dir:
-      filepath = os.path.join(_save_dir, filepath)
+      filepath = vname(filepath, num_back=3, func_name='vload')
+    filepath += ".pkl"
   else:
     filename, ext = os.path.splitext(filepath)
     if filename.startswith('.'): # If only extension was provided
       ext = filename
-      filename = var_name
-    if not ext: # Is filepath a directory?
+      filepath = var_name + ext
+    elif not ext: # Is filepath a directory?
       load_dir = filename
       filepath = vname(filepath, num_back=3, func_name='vload', arg_i=-1)
+      filepath += ".pkl"
   if load_dir:
     filepath = os.path.join(load_dir, filepath)
   if ext == '.txt':
