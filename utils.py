@@ -83,7 +83,7 @@ def lstr(var, name=None, val=None, max_depth=10, func_name='lstr', num_back=3):
   if not val:
     if hasattr(var, '__len__') and not hasattr(var, 'shape'):
       val = str(len(var))
-      if len(var) > 0 and hasattr(var, '__getitem__') and not isinstance(var[0], str):
+      if not isinstance(var, dict) and len(var) > 0 and hasattr(var, '__getitem__') and not isinstance(var[0], str):
         inner_var = var[0]
         depth = 0
         var_len = vlen(inner_var)
@@ -240,6 +240,7 @@ def vsave(obj, filepath=None, verbose=True, sort=True):
 def vload(filepath=float('inf'), verbose=True, load_dir=None):
   ext = ''
   if not load_dir:
+    global _save_dir
     load_dir = _save_dir
   if not isinstance(filepath, str): # If None or an object
     if filepath == float('inf'): # No filepath argument provided
