@@ -36,9 +36,11 @@ def vname(var, num_back=2, func_name='vname', arg_i=0):
       var_name = var_search.group(1)
       if not var_name:
         var_name = ''
+      else:
+        var_name = var_name.replace("self.", "") # For loading class variables
   else:
     args_start = code.find(func_name+'(') + len(func_name) + 1 # +1 for (
-    args_end = code.find(')', args_start)
+    args_end = len(code) - code[::-1].find(')') - 1 # Search from the end, in case there's another function call inside
     args_str = code[args_start:args_end]
     var_name = args_str.split(",")[arg_i].strip()
   return var_name
@@ -49,21 +51,7 @@ def vline(num_back=2): # Credit to http://code.activestate.com/recipes/145297-gr
       
 # Print to standard error.
 def eprint(*args, **kwargs):
-  """Gets and prints the spreadsheet's header columns
-
-  Parameters
-  ----------
-  file_loc : str
-      The file location of the spreadsheet
-  print_cols : bool, optional
-      A flag used to print the columns to the console (default is False)
-
-  Returns
-  -------
-  list
-      a list of strings representing the header columns
-  """
-  print(args, file=sys.stderr, **kwargs)
+  print(args[0], file=sys.stderr, **kwargs)
 
 def vstr(var, name=None, val=None, func_name='vstr', num_back=3):
   if not val:
@@ -118,18 +106,18 @@ def lstr(var, name=None, val=None, max_depth=10, func_name='lstr', num_back=3):
   return msg
   
 # Print len
-def lprint(var, name=None, val=None, **kwargs):
+def lprint(var, name=None, val=None, num_back=4, **kwargs):
   msg = lstr(var, name, val, func_name='lprint', num_back=4)
   print(msg, **kwargs)
 
 # Get str of all printing functions output
-def astr(var, name=None, val=None, func_name='astr'):
-  msg = lstr(var, name, val, func_name=func_name) + "\n" + vstr(var, "\t", val, func_name=func_name)
+def astr(var, name=None, val=None, func_name='astr', num_back=4):
+  msg = lstr(var, name, val, func_name=func_name, num_back=num_back) + "\n" + vstr(var, "\t", val, func_name=func_name, num_back=num_back)
   return msg
 
 # Call all printing functions for variable
 def aprint(var, name=None, val=None, **kwargs):
-  msg = astr(var, name, val, func_name='aprint')
+  msg = astr(var, name, val, func_name='aprint', num_back=5)
   print(msg, **kwargs)
 
 def vlen(var):
@@ -188,8 +176,12 @@ def add_file_suffix(filename, suf):
 # If filepath ends in .csv, save as csv.
 # If filepath is just an extension: '.pkl', '.txt' or '.csv', save as that type of file
 #   using the variable name as file basename
+global _save_dir
 _save_dir = ''
-def vsave(obj, filepath=None, verbose=True, sort=True):
+def vsave(obj, filepath=None, verbose=True, sort=True, save_dir=None):
+  global _save_dir
+  if save_dir:
+    _save_dir = save_dir
   var_name = vname(obj, num_back=3, func_name='vsave')
   ext = None
   if filepath:
@@ -198,7 +190,6 @@ def vsave(obj, filepath=None, verbose=True, sort=True):
       ext = filename
       filename = var_name
     if not ext: # If no extension, assume directory
-      global _save_dir
       _save_dir = filename # Save directory for future calls
     elif ext == '.txt':
       filepath = filename+'.txt'
