@@ -10,6 +10,7 @@ import time
 import pickle
 import os
 import regex as re
+import csv
 
 # Confounding variable names that we don't want from the stack.
 # Not a comprehensive or generalized list
@@ -26,7 +27,7 @@ def prev_frame(num_back=1):
 # arg_i is the index of the argument in the function being called num_back frames ago
 #  if arg_i is -1, the name receiving variable of the receiving variable is returned
 #  e.g. var_name = vname(arg_i=-1) => returns 'var_name'
-def vname(var, num_back=2, func_name='vname', arg_i=0):
+def vname(var=None, num_back=2, func_name='vname', arg_i=0):
   code = inspect.getframeinfo(prev_frame(num_back))[3][0]
   var_name = ''
   if arg_i < 0:
@@ -59,7 +60,7 @@ def vstr(var, name=None, val=None, func_name='vstr', num_back=3):
   msg = None
   if not name:
     name = vname(var, num_back, func_name)
-  msg = name + " (line " + str(vline(num_back)) + ")" + ": " + str(val)
+  msg = name + " (line " + str(vline(num_back)) + ") " + str(type(var)) + ": " + str(val)
   return msg
   
 def vprint(var, name=None, val=None, **kwargs):
@@ -192,7 +193,7 @@ def vsave(obj, filepath=None, verbose=True, sort=True, save_dir=None):
     if not ext: # If no extension, assume directory
       _save_dir = filename # Save directory for future calls
     elif ext == '.txt':
-      filepath = filename+'.txt'
+      filepath = filename + ext
       with open(filepath, 'w') as txt_file:
         if isinstance(obj, list):
           for item in obj:
@@ -209,6 +210,19 @@ def vsave(obj, filepath=None, verbose=True, sort=True, save_dir=None):
         if verbose:
           print("To load saved variable: "+var_name+" = vload('"+filepath+"')")
         return
+    elif ext == '.csv' or ext == '.tsv':
+      filepath = filename + ext
+      with open(filepath, 'w') as csv_file:
+        if ext == '.csv':
+          delimiter = ','
+        else:
+          delimiter = '\t'
+        writer = csv.writer(csv_file, delimiter=delimiter)
+        for row in obj:
+          writer.writerow(row)
+      if verbose:
+        print("To load saved variable: "+var_name+" = vload('"+filepath+"')")
+      return
         
   else:
     filepath = _save_dir
@@ -244,6 +258,7 @@ def vload(filepath=float('inf'), verbose=True, load_dir=None):
     filename, ext = os.path.splitext(filepath)
     if filename.startswith('.'): # If only extension was provided
       ext = filename
+      var_name = vname(filepath, num_back=3, func_name='vload', arg_i=-1)
       filepath = var_name + ext
     elif not ext: # Is filepath a directory?
       load_dir = filename
@@ -256,13 +271,22 @@ def vload(filepath=float('inf'), verbose=True, load_dir=None):
       loaded_var = []
       for line in txt_file:
         loaded_var.append(line.strip())
-      return loaded_var
+  elif ext == '.csv' or ext == '.tsv':
+    with open(filepath, 'r', newline='') as csv_file:
+      if ext == '.csv':
+        delimiter = ','
+      else:
+        delimiter = '\t'
+      reader = csv.reader(csv_file, delimiter=delimiter)
+      loaded_var = []
+      for row in reader:
+        loaded_var.append(row)
   else:
     with open(filepath, 'rb') as bin_file:
       loaded_var = pickle.load(bin_file)
-      if verbose:
-        lprint(loaded_var, "Loaded variable from "+filepath)
-      return loaded_var
+  if verbose:
+    lprint(loaded_var, "Loaded variable from "+filepath)
+  return loaded_var
 
 _start_time = time.time()
 _start_stack = [_start_time]
