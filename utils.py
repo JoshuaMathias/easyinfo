@@ -70,7 +70,7 @@ def vstr(var, name=None, val=None, func_name='vstr', num_back=3, verbose=None):
     name = vname(var, num_back, func_name)
   msg = name
   if verbose is not False:
-    msg += " (line " + str(vline(num_back)) + ") " + str(type(var))
+    msg += " (line " + str(vline(num_back)) + ") " + repr(var)
   msg += ": " + str(val)
   return msg
   
