@@ -59,8 +59,11 @@ def vline(num_back=2): # Credit to http://code.activestate.com/recipes/145297-gr
     return prev_frame(num_back).f_lineno
       
 # Print to standard error.
-def eprint(*args, **kwargs):
-  print(args[0], file=sys.stderr, **kwargs)
+# Similar to vprint by default, or just print a given msg
+def eprint(var, msg=None, verbose=None, **kwargs):
+  if msg is None:
+    msg = vstr(var, func_name='eprint', num_back=4, verbose=verbose)
+  print(msg, file=sys.stderr)
 
 def vstr(var, name=None, val=None, func_name='vstr', num_back=3, verbose=None):
   if not val:
@@ -70,14 +73,32 @@ def vstr(var, name=None, val=None, func_name='vstr', num_back=3, verbose=None):
     name = vname(var, num_back, func_name)
   msg = name
   if verbose is not False:
-    msg += " (line " + str(vline(num_back)) + ") " + repr(var)
+    msg += " (line " + str(vline(num_back)) + ") <" + var.__class__.__name__+">"
   msg += ": " + str(val)
   return msg
   
+# Print a variable, with its name and value
+# If verbose is not False, will print line number of function call
+#   and type of variable
+# Specify name to print a message instead of the variable name
 def vprint(var, name=None, val=None, verbose=None, **kwargs):
   msg = vstr(var, name, val, func_name='vprint', num_back=4, verbose=verbose)
   print(msg, **kwargs)
   
+# Similar to vprint, but prints __repr__ instead of __str__
+def rprint(var, name=None, val=None, verbose=None, **kwargs):
+  if not val:
+    val = var
+  msg = vstr(var, name, val=repr(val), func_name='rprint', num_back=4, verbose=verbose)
+  print(msg, **kwargs)
+
+# Similar to vprint, but prints dir(var) instead of str(var)
+def dprint(var, name=None, val=None, verbose=None, **kwargs):
+  if not val:
+    val = var
+  msg = vstr(var, name, val=dir(val), func_name='dprint', num_back=4, verbose=verbose)
+  print(msg, **kwargs)
+
 def lstr(var, name=None, val=None, max_depth=10, func_name='lstr', num_back=3, verbose=None):
   attr_name = 'len'
   if not val:
