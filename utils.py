@@ -361,8 +361,8 @@ def start(id=None):
       a list of strings representing the header columns
   """
   global _start_time, _last_time
-  _start_time = time.time()
   _last_time = None
+  _start_time = time.time()
 
 # msg: message to print before time. If only id is provided, 
 # use id for msg. If neither is provided, use "Total time"
