@@ -367,19 +367,23 @@ def start(id=None):
 # msg: message to print before time. If only id is provided, 
 # use id for msg. If neither is provided, use "Total time"
 # id: 
-def end(msg=None):
+def end(msg=None, verbose=True):
   end_time = time.time()
   global _start_time, _last_time
   total_time = end_time - _start_time
-  if not msg:
-    msg = 'Total time'
-  if _last_time:
-    since_time = end_time - _last_time
-    msg += ': '+str(total_time)+' Time since last: '+str(since_time)
-    print(msg)
+  if verbose:
+    if not msg:
+      msg = 'Total time'
+    if _last_time:
+      since_time = end_time - _last_time
+      msg += ': '+str(total_time)+' Time since last: '+str(since_time)
+      print(msg)
+    else:
+      vprint(total_time, name=msg)
   else:
-    vprint(total_time, name=msg)
+    since_time = end_time - _last_time
   _last_time = time.time()
+  return since_time
 
 # Return an int, removing any non-digit chars other than . or -
 def to_int(text):
