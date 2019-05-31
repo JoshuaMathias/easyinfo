@@ -420,6 +420,7 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
     # For every function, calc t-score and p-value
     # Function | obj1 avg time | obj1 std | obj2 avg time | obj2 std | obj2 t-score | obj2 p-value
     headers.append(objects[0].__name__ + ' avg sec')
+    headers.append('Conclusion')
     for obj in objects[1:]:
       headers.append(obj.__name__ + ' avg sec')
       headers.append('Conclusion')
