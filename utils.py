@@ -7,7 +7,6 @@ Easy debug printing, timing, and variable attributes (length, width) for Python.
 from __future__ import print_function
 import sys
 import inspect
-import time
 # from IPython.core.display import display, HTML
 import pickle
 import os
@@ -17,6 +16,47 @@ from tabulate import tabulate
 from numpy import mean as np_mean
 from numpy import asarray as np_asarray
 from scipy.stats import ttest_ind
+
+# process_time in Python2
+import ctypes
+import errno
+from ctypes.util import find_library
+from functools import partial
+
+CLOCK_PROCESS_CPUTIME_ID = 2  # time.h
+CLOCK_MONOTONIC_RAW = 4
+
+clockid_t = ctypes.c_int
+time_t = ctypes.c_long
+
+
+class timespec(ctypes.Structure):
+    _fields_ = [
+        ('tv_sec', time_t),         # seconds
+        ('tv_nsec', ctypes.c_long)  # nanoseconds
+    ]
+_clock_gettime = ctypes.CDLL(find_library('rt'), use_errno=True).clock_gettime
+_clock_gettime.argtypes = [clockid_t, ctypes.POINTER(timespec)]
+
+
+def clock_gettime(clk_id):
+    tp = timespec()
+    if _clock_gettime(clk_id, ctypes.byref(tp)) < 0:
+        err = ctypes.get_errno()
+        msg = errno.errorcode[err]
+        if err == errno.EINVAL:
+            msg += (" The clk_id specified is not supported on this system"
+                    " clk_id=%r") % (clk_id,)
+        raise OSError(err, msg)
+    return tp.tv_sec + tp.tv_nsec * 1e-9
+
+try:
+    from time import process_time
+except ImportError:  # Python <3.3
+    # perf_counter = partial(clock_gettime, CLOCK_MONOTONIC_RAW)
+    # perf_counter.__name__ = 'perf_counter'
+    process_time = partial(clock_gettime, CLOCK_PROCESS_CPUTIME_ID)
+    process_time.__name__ = 'process_time'
 
 # Confounding variable names that we don't want from the stack.
 # Not a comprehensive or generalized list
@@ -358,7 +398,7 @@ def vload(filepath=float('inf'), load_dir=None, verbose=True):
 
 #   print ("%d:%d:%d" % (hours, minutes, seconds))
 
-timer = time.process_time
+timer = process_time
 _start_time = timer()
 _start_stack = [_start_time]
 _last_time = None
