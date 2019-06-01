@@ -443,6 +443,17 @@ def random_order(num_objects, num_times):
   shuffle(rands)
   return rands
 
+# Given t and p, is the time significantly faster or slower?
+def get_conclusion(t, p):
+  if p >= .5:
+    conc = 'Same'
+  elif t > 0:
+    conc = 'Faster'
+  else:
+    conc = 'Slower'
+  if p < .5 and p > .05:
+    conc += '?'
+  return conc
 
 # Given classes or objects, perform function(s) on them
 # Compare timing
@@ -487,16 +498,11 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
       for obj_i in range(1, len(objects)): # Skip first obj (baseline)
         obj_times = obj_table[obj_i][func_i]
         t, p = ttest_ind(obj1_times, obj_times)
-        if p > .05:
-          t = 'Same'
-        elif t > 0:
-          t = 'Faster'
-        else:
-          t = 'Slower'
+        conc = get_conclusion(t, p)
         obj_times = np_asarray(obj_times)
         func_scores.append(obj_times.min())
         func_scores.append(np_mean(obj_times))
-        func_scores.append(t)
+        func_scores.append(conc)
         func_scores.append(p)
       t_test_table.append(func_scores)
   else:
@@ -521,14 +527,9 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
       func_scores = [func.__name__]
       func_times = func_table[func_i]
       t, p = ttest_ind(func1_times, func_times)
-      if p > .05:
-        t = 'Same'
-      elif t > 0:
-        t = 'Faster'
-      else:
-        t = 'Slower'
+      conc = get_conclusion(t, p)
       func_times = np_asarray(func_times)
-      func_scores.extend([func_times.min(), np_mean(func_times), t, p])
+      func_scores.extend([func_times.min(), np_mean(func_times), conc, p])
       t_test_table.append(func_scores)
   
   msg = "Timing test iterations: "+str(num_times)+"\n"
