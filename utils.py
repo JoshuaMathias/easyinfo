@@ -461,11 +461,11 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
     
     # For every function, calc t-score and p-value
     # Function | obj1 avg time | obj1 std | obj2 avg time | obj2 std | obj2 t-score | obj2 p-value
-    headers.append(objects[0].__name__ + ' avg sec')
-    headers.append('Min')
+    headers.append(objects[0].__name__ + ' Min')
+    headers.append('Avg Sec')
     headers.append('Conclusion')
     for obj in objects[1:]:
-      headers.append(obj.__name__ + ' avg sec')
+      headers.append(obj.__name__ + ' Avg Sec')
       headers.append('Min')
       headers.append('Conclusion')
       headers.append('p-value')
@@ -473,8 +473,8 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
       func_scores = [func.__name__]
       obj1_times = obj_dict[objects[0].__name__][func.__name__]
       obj1_times = np_asarray(obj1_times)
-      func_scores.append(np_mean(obj1_times))
       func_scores.append(obj1_times.min())
+      func_scores.append(np_mean(obj1_times))
       func_scores.append('Baseline')
       for i, obj in enumerate(objects[1:]):
         obj_times = obj_dict[obj.__name__][func.__name__]
@@ -484,13 +484,13 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
         else:
           t = 'Slower'
         obj_times = np_asarray(obj_times)
-        func_scores.append(np_mean(obj_times))
         func_scores.append(obj_times.min())
+        func_scores.append(np_mean(obj_times))
         func_scores.append(t)
         func_scores.append(p)
       t_test_table.append(func_scores)
   else:
-    headers.extend(['avg sec', 'Min', 'Conclusion', 'p-value'])
+    headers.extend(['Avg Sec', 'Min', 'Conclusion', 'p-value'])
     func_dict = {}
     for func in functions:
       func_times = []
@@ -515,7 +515,7 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
       else:
         t = 'Slower'
       func_times = np_asarray(func_times)
-      func_scores.extend([np_mean(func_times), func_times.min(), t, p])
+      func_scores.extend([func_times.min(), np_mean(func_times), t, p])
       t_test_table.append(func_scores)
   
   msg = "Timing test iterations: "+str(num_times)+"\n"
