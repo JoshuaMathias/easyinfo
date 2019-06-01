@@ -15,6 +15,8 @@ import csv
 from tabulate import tabulate
 from numpy import mean as np_mean
 from numpy import asarray as np_asarray
+from numpy.random import randint
+from random import shuffle
 from scipy.stats import ttest_ind
 
 # process_time in Python2
@@ -433,6 +435,15 @@ def end(msg=None, verbose=True):
   _last_time = timer()
   return since_time
 
+# Get random order of selection for a given number of indices (num_objects)
+def random_order(num_objects, num_times):
+  rands = []
+  for i in range(num_objects):
+    rands.extend([i for _ in range(num_times)])
+  shuffle(rands)
+  return rands
+
+
 # Given classes or objects, perform function(s) on them
 # Compare timing
 def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
@@ -442,22 +453,19 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
   t_test_table = []
   headers = ['Function']
   if objects is not None:
-    obj_dict = {} # dict for every object
+    rands = random_order(len(objects), num_times)
+    obj_table = [[[] for _ in range(len(functions))] for _ in range(len(objects))]
     # For every object, time execution of every function, num_times
-    for obj in objects:
-      func_dict = {}
-      for func in functions:
-        func_times = []
-        for _ in range(num_times):
-          if len(kwargs):
-            start()
-            func(obj, **kwargs)
-          else:
-            start()
-            func(obj)
-          func_times.append(end(verbose=False))
-        func_dict[func.__name__] = func_times
-      obj_dict[obj.__name__] = func_dict
+    for func_i, func in enumerate(functions):
+      for rand in rands:
+        obj = objects[rand] # Select object randomly
+        if len(kwargs):
+          start()
+          func(obj, **kwargs)
+        else:
+          start()
+          func(obj)
+        obj_table[rand][func_i].append(end(verbose=False))
     
     # For every function, calc t-score and p-value
     # Function | obj1 avg time | obj1 std | obj2 avg time | obj2 std | obj2 t-score | obj2 p-value
@@ -465,21 +473,23 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
     headers.append('Avg Sec')
     headers.append('Conclusion')
     for obj in objects[1:]:
-      headers.append(obj.__name__ + ' Avg Sec')
-      headers.append('Min')
+      headers.append(obj.__name__ + ' Min')
+      headers.append('Avg Sec')
       headers.append('Conclusion')
       headers.append('p-value')
-    for func in functions:
+    for func_i, func in enumerate(functions):
       func_scores = [func.__name__]
-      obj1_times = obj_dict[objects[0].__name__][func.__name__]
+      obj1_times = obj_table[0][func_i]
       obj1_times = np_asarray(obj1_times)
       func_scores.append(obj1_times.min())
       func_scores.append(np_mean(obj1_times))
       func_scores.append('Baseline')
-      for i, obj in enumerate(objects[1:]):
-        obj_times = obj_dict[obj.__name__][func.__name__]
+      for obj_i in range(1, len(objects)): # Skip first obj (baseline)
+        obj_times = obj_table[obj_i][func_i]
         t, p = ttest_ind(obj1_times, obj_times)
-        if t > 0:
+        if p > .05:
+          t = 'Same'
+        elif t > 0:
           t = 'Faster'
         else:
           t = 'Slower'
@@ -490,27 +500,30 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
         func_scores.append(p)
       t_test_table.append(func_scores)
   else:
+    rands = random_order(len(functions), num_times)
     headers.extend(['Min', 'Avg Sec', 'Conclusion', 'p-value'])
-    func_dict = {}
-    for func in functions:
-      func_times = []
-      for _ in range(num_times):
-        if len(kwargs):
-          start()
-          func(**kwargs)
-        else:
-          start()
-          func()
-        func_times.append(end(verbose=False))
-      func_dict[func.__name__] = func_times
-    func1_times = func_dict[functions[0].__name__]
+    func_table = [[] for _ in range(len(functions))]
+    for rand in rands:
+      func = functions[rand]
+      if len(kwargs):
+        start()
+        func(**kwargs)
+      else:
+        start()
+        func()
+      func_table[rand].append(end(verbose=False))
+    func1_times = func_table[0]
     func1_times = np_asarray(func1_times)
+
     t_test_table.append([functions[0].__name__, func1_times.min(), np_mean(func1_times), 'Baseline'])
-    for i, func in enumerate(functions[1:]):
+    for func_i in range(1, len(functions)): # Skip first function (baseline)
+      func = functions[func_i]
       func_scores = [func.__name__]
-      func_times = func_dict[func.__name__]
+      func_times = func_table[func_i]
       t, p = ttest_ind(func1_times, func_times)
-      if t > 0:
+      if p > .05:
+        t = 'Same'
+      elif t > 0:
         t = 'Faster'
       else:
         t = 'Slower'
