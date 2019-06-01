@@ -490,7 +490,7 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
         func_scores.append(p)
       t_test_table.append(func_scores)
   else:
-    headers.extend(['Avg Sec', 'Min', 'Conclusion', 'p-value'])
+    headers.extend(['Min', 'Avg Sec', 'Conclusion', 'p-value'])
     func_dict = {}
     for func in functions:
       func_times = []
