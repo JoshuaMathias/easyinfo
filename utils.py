@@ -385,6 +385,16 @@ def vload(filepath=float('inf'), load_dir=None, verbose=True):
     lprint(loaded_var, "Loaded variable from "+filepath_str)
   return loaded_var
 
+
+# Get name of function, class, or variable
+def get_name(obj):
+  if hasattr(obj, '__name__'):
+    return obj.__name__
+  elif hasattr(obj, '__class__'):
+    return obj.__class__.__name__
+  else:
+    return vname(obj, num_back=3)
+
 # Timing
 
 # Format seconds to whatever makes sense
@@ -480,16 +490,16 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
     
     # For every function, calc t-score and p-value
     # Function | obj1 avg time | obj1 std | obj2 avg time | obj2 std | obj2 t-score | obj2 p-value
-    headers.append(objects[0].__name__ + ' Min')
+    headers.append(get_name(objects[0]) + ' Min')
     headers.append('Avg Sec')
     headers.append('Conclusion')
     for obj in objects[1:]:
-      headers.append(obj.__name__ + ' Min')
+      headers.append(get_name(obj) + ' Min')
       headers.append('Avg Sec')
       headers.append('Conclusion')
       headers.append('p-value')
     for func_i, func in enumerate(functions):
-      func_scores = [func.__name__]
+      func_scores = [get_name(func)]
       obj1_times = obj_table[0][func_i]
       obj1_times = np_asarray(obj1_times)
       func_scores.append(obj1_times.min())
@@ -521,10 +531,10 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
     func1_times = func_table[0]
     func1_times = np_asarray(func1_times)
 
-    t_test_table.append([functions[0].__name__, func1_times.min(), np_mean(func1_times), 'Baseline'])
+    t_test_table.append([get_name(functions[0]), func1_times.min(), np_mean(func1_times), 'Baseline'])
     for func_i in range(1, len(functions)): # Skip first function (baseline)
       func = functions[func_i]
-      func_scores = [func.__name__]
+      func_scores = [get_name(func)]
       func_times = func_table[func_i]
       t, p = ttest_ind(func1_times, func_times)
       conc = get_conclusion(t, p)
