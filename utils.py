@@ -14,7 +14,8 @@ import os
 import regex as re
 import csv
 from tabulate import tabulate
-from numpy import mean
+from numpy import mean as np_mean
+from numpy import asarray as np_asarray
 from scipy.stats import ttest_ind
 
 # Confounding variable names that we don't want from the stack.
@@ -710,7 +711,7 @@ def vload(filepath=float('inf'), load_dir=None, verbose=True):
 
 #   print ("%d:%d:%d" % (hours, minutes, seconds))
 
-timer = time.process_time()
+timer = time.process_time
 _start_time = timer()
 _start_stack = [_start_time]
 _last_time = None
@@ -774,15 +775,19 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
     # For every function, calc t-score and p-value
     # Function | obj1 avg time | obj1 std | obj2 avg time | obj2 std | obj2 t-score | obj2 p-value
     headers.append(objects[0].__name__ + ' avg sec')
+    headers.append('Min')
     headers.append('Conclusion')
     for obj in objects[1:]:
       headers.append(obj.__name__ + ' avg sec')
+      headers.append('Min')
       headers.append('Conclusion')
       headers.append('p-value')
     for func in functions:
       func_scores = [func.__name__]
       obj1_times = obj_dict[objects[0].__name__][func.__name__]
-      func_scores.append(mean(obj1_times))
+      obj1_times = np_asarray(obj1_times)
+      func_scores.append(np_mean(obj1_times))
+      func_scores.append(obj1_times.min())
       func_scores.append('Baseline')
       for i, obj in enumerate(objects[1:]):
         obj_times = obj_dict[obj.__name__][func.__name__]
@@ -791,12 +796,14 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
           t = 'Faster'
         else:
           t = 'Slower'
-        func_scores.append(mean(obj_times))
+        obj_times = np_asarray(obj_times)
+        func_scores.append(np_mean(obj_times))
+        func_scores.append(obj_times.min())
         func_scores.append(t)
         func_scores.append(p)
       t_test_table.append(func_scores)
   else:
-    headers.extend(['avg sec', 'Conclusion', 'p-value'])
+    headers.extend(['avg sec', 'Min', 'Conclusion', 'p-value'])
     func_dict = {}
     for func in functions:
       func_times = []
@@ -810,7 +817,8 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
         func_times.append(end(verbose=False))
       func_dict[func.__name__] = func_times
     func1_times = func_dict[functions[0].__name__]
-    t_test_table.append([functions[0].__name__, mean(func1_times), 'Baseline'])
+    func1_times = np_asarray(func1_times)
+    t_test_table.append([functions[0].__name__, func1_times.min(), np_mean(func1_times), 'Baseline'])
     for i, func in enumerate(functions[1:]):
       func_scores = [func.__name__]
       func_times = func_dict[func.__name__]
@@ -819,7 +827,8 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
         t = 'Faster'
       else:
         t = 'Slower'
-      func_scores.extend([mean(func_times), t, p])
+      func_times = np_asarray(func_times)
+      func_scores.extend([np_mean(func_times), func_times.min(), t, p])
       t_test_table.append(func_scores)
   
   msg = "Timing test iterations: "+str(num_times)+"\n"
@@ -880,170 +889,3 @@ def to_num(text):
 #   hours=(millis/(1000*60*60))%24
 
 #   print ("%d:%d:%d" % (hours, minutes, seconds))
-
-timer = time.process_time()
-_start_time = timer()
-_start_stack = [_start_time]
-_last_time = None
-_start_ids = {} # key: id, value: (start_time, last_time)
-
-# id: Dictionary key, to track which start time and last time to use with end()
-def start(id=None):
-  global _start_time, _last_time
-  _last_time = None
-  _start_time = time.time()
-
-# msg: message to print before time. If only id is provided, 
-# use id for msg. If neither is provided, use "Total time"
-# id: 
-def end(msg=None, verbose=True):
-  end_time = time.time()
-  global _start_time, _last_time
-  total_time = end_time - _start_time
-  try:
-    since_time = end_time - _last_time
-  except TypeError:
-    since_time = total_time
-  if verbose:
-    if not msg:
-      msg = 'Total time'
-    if _last_time:
-      since_time = end_time - _last_time
-      msg += ': '+str(total_time)+' Time since last: '+str(since_time)
-      print(msg)
-    else:
-      vprint(total_time, name=msg)
-  _last_time = time.time()
-  return since_time
-
-# Given classes or objects, perform function(s) on them
-# Compare timing
-def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
-  if not isinstance(functions, list):
-    functions = [functions]
-  times = {}
-  t_test_table = []
-  headers = ['Function']
-  if objects is not None:
-    obj_dict = {} # dict for every object
-    # For every object, time execution of every function, num_times
-    for obj in objects:
-      func_dict = {}
-      for func in functions:
-        func_times = []
-        for _ in range(num_times):
-          if len(kwargs):
-            start()
-            func(obj, **kwargs)
-          else:
-            start()
-            func(obj)
-          func_times.append(end(verbose=False))
-        func_dict[func.__name__] = func_times
-      obj_dict[obj.__name__] = func_dict
-    
-    # For every function, calc t-score and p-value
-    # Function | obj1 avg time | obj1 std | obj2 avg time | obj2 std | obj2 t-score | obj2 p-value
-    headers.append(objects[0].__name__ + ' avg sec')
-    headers.append('Conclusion')
-    for obj in objects[1:]:
-      headers.append(obj.__name__ + ' avg sec')
-      headers.append('Conclusion')
-      headers.append('p-value')
-    for func in functions:
-      func_scores = [func.__name__]
-      obj1_times = obj_dict[objects[0].__name__][func.__name__]
-      func_scores.append(mean(obj1_times))
-      func_scores.append('Baseline')
-      for i, obj in enumerate(objects[1:]):
-        obj_times = obj_dict[obj.__name__][func.__name__]
-        t, p = ttest_ind(obj1_times, obj_times)
-        if t > 0:
-          t = 'Faster'
-        else:
-          t = 'Slower'
-        func_scores.append(mean(obj_times))
-        func_scores.append(t)
-        func_scores.append(p)
-      t_test_table.append(func_scores)
-  else:
-    headers.extend(['avg sec', 'Conclusion', 'p-value'])
-    func_dict = {}
-    for func in functions:
-      func_times = []
-      for _ in range(num_times):
-        if len(kwargs):
-          start()
-          func(**kwargs)
-        else:
-          start()
-          func()
-        func_times.append(end(verbose=False))
-      func_dict[func.__name__] = func_times
-    func1_times = func_dict[functions[0].__name__]
-    t_test_table.append([functions[0].__name__, mean(func1_times), 'Baseline'])
-    for i, func in enumerate(functions[1:]):
-      func_scores = [func.__name__]
-      func_times = func_dict[func.__name__]
-      t, p = ttest_ind(func1_times, func_times)
-      if t > 0:
-        t = 'Faster'
-      else:
-        t = 'Slower'
-      func_scores.extend([mean(func_times), t, p])
-      t_test_table.append(func_scores)
-  
-  msg = "Timing test iterations: "+str(num_times)+"\n"
-  msg += tabulate(t_test_table, headers=headers)
-  msg += "\n"
-  print(msg)
-    
-
-# Return an int, removing any non-digit chars other than . or -
-def to_int(text):
-  if isinstance(text, int):
-    return text
-  try:
-    text = int(text)
-    return text
-  except ValueError:
-    text = str(text)
-    text_digits = ""
-    for c in text:
-      if c.isdigit() or c == '.' or c == '-':
-        text_digits += c
-    if text_digits:
-      try:
-        return int(text_digits)
-      except ValueError:
-        return False
-    else:
-      return False
-
-# Return int if possible or float otherwise.
-def to_num(text):
-  if isinstance(text, int):
-    return text
-  try:
-    text_float = float(text)
-    text_int = int(text)
-    if text_int == text_float:
-      return text_int
-    return text_float
-  except ValueError:
-    text = str(text)
-    text_digits = ""
-    for c in text:
-      if c.isdigit() or c == '.' or c == '-':
-        text_digits += c
-    if text_digits:
-      try:
-        return int(text_digits)
-      except ValueError:
-        try:
-          score = float(score)
-        except ValueError:
-          pass
-        return False
-    else:
-      return False
