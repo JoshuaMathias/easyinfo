@@ -18,6 +18,7 @@ from numpy import asarray as np_asarray
 from numpy.random import randint
 from random import shuffle
 from scipy.stats import ttest_ind
+import pprint
 
 # process_time in Python2
 import ctypes
@@ -120,7 +121,11 @@ def vstr(var, name=None, val=None, func_name='vstr', num_back=3, verbose=None):
   msg = name
   if verbose is not False:
     msg += " (line " + str(vline(num_back)) + ") <" + var.__class__.__name__+">"
-  msg += ": " + str(val)
+  msg += ": "
+  try:
+    msg += pprint.pformat(val)
+  except Exception:
+    msg += str(val)
   return msg
   
 # Print a variable, with its name and value
@@ -467,7 +472,10 @@ def get_conclusion(t, p):
 
 # Given classes or objects, perform function(s) on them
 # Compare timing
-def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
+# If filepath is provided, will use vsave to save final table to that path.
+#  If filepath is True or an extension a default filename will be generated
+#    based on the objects, functions, and num_times.
+def compare_time(objects=None, functions=[], num_times=1000, filepath=None, **kwargs):
   if not isinstance(functions, list):
     functions = [functions]
   times = {}
@@ -546,7 +554,27 @@ def compare_time(objects=None, functions=[], num_times=1000, **kwargs):
   msg += tabulate(t_test_table, headers=headers)
   msg += "\n"
   print(msg)
-    
+  t_test_table.insert(0, headers)
+  if filepath is not None:
+    if filepath is True or filepath == '':
+      filepath = '.csv'
+    if filepath.startswith('.'):
+      filename = ''
+      if objects:
+        for obj in objects:
+          filename += get_name(obj) + '-'
+      if len(filename):
+        filename = filename[:-1] + '_'
+      for func in functions:
+        filename += get_name(func) + '-'
+      if len(filename):
+        filename = filename[:-1] + '_'
+      filename += str(num_times)
+      filepath = filename + filepath # Add extension
+      # e.g. obj1-obj2_func1-func2
+    vsave(t_test_table, filepath=filepath)
+
+  return t_test_table
 
 # Return an int, removing any non-digit chars other than . or -
 def to_int(text):
