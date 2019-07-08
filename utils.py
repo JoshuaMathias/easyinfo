@@ -170,7 +170,7 @@ def lstr(var, name=None, val=None, max_depth=10, func_name='lstr', num_back=3, v
             break
           try:
             inner_var = inner_var[0]
-          except TypeError:
+          except (TypeError, KeyError):
             if vwid(inner_var):
               val += " x "+str(vwid(inner_var))
             break
@@ -239,9 +239,13 @@ def vwid(var):
         val = val[1]
       else:
         val = 1
-    elif hasattr(var, '__len__'):
+    elif hasattr(var, '__len__') and len(var):
+
       if len(var) > 0:
-        val = vlen(var[0])
+        try:
+          val = vlen(var[0])
+        except (TypeError, KeyError):
+          val = vlen(var[var.keys()[0]])
       else:
         val = 0
     elif hasattr(var, 'size'):
