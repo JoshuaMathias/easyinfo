@@ -310,7 +310,7 @@ def vsave(obj, filepath=None, sort=True, save_dir=None, verbose=True,):
           txt_file.write(str(obj)+"\n")
         if verbose:
           print("To load saved variable: "+var_name+" = vload('"+filepath+"')")
-        return
+        return filepath
     elif ext == '.csv' or ext == '.tsv':
       filepath = filename + ext
       with open(filepath, 'w') as csv_file:
@@ -323,7 +323,7 @@ def vsave(obj, filepath=None, sort=True, save_dir=None, verbose=True,):
           writer.writerow(row)
       if verbose:
         print("To load saved variable: "+var_name+" = vload('"+filepath+"')")
-      return
+      return filepath
         
   else:
     filepath = _save_dir
@@ -336,7 +336,7 @@ def vsave(obj, filepath=None, sort=True, save_dir=None, verbose=True,):
     pickle.dump(obj, bin_file)
   if verbose:
     print("To load saved variable: "+var_name+" = vload('"+filepath+"')")
-
+  return filepath
 # Load pickled object from filename
 # If argument is not a string, use name of argument to assume filename
 # If no arguments are given or filepath is a string but with no extension,
@@ -368,12 +368,12 @@ def vload(filepath=float('inf'), load_dir=None, verbose=True):
   if load_dir:
     filepath = os.path.join(load_dir, filepath)
   if ext == '.txt':
-    with open(filepath, 'r', newline='') as txt_file:
+    with open(filepath, 'r') as txt_file:
       loaded_var = []
       for line in txt_file:
         loaded_var.append(line.strip())
   elif ext == '.csv' or ext == '.tsv':
-    with open(filepath, 'r', newline='') as csv_file:
+    with open(filepath, 'r') as csv_file:
       if ext == '.csv':
         delimiter = ','
       else:
