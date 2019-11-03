@@ -10,12 +10,36 @@ import inspect
 # from IPython.core.display import display, HTML
 import pickle
 import os
-import regex as re
+import subprocess
+import importlib
+
+def imp(package):
+    """ Import module by name """
+    try:
+      mod = importlib.import_module(package)
+      return mod
+    except (ImportError, KeyError):
+      return None
+
+def install(package): # credit to https://stackoverflow.com/questions/12332975/installing-python-module-within-code
+    subprocess.call([sys.executable, "-m", "pip", "install", package])
+
+def impstall(package):
+    """ Try to import name of package. If import fails, install, then import.
+    """
+    mod = imp(package)
+    if package is None:
+      install(package)
+      mod = imp(package)
+    return mod
+
+re = impstall('regex')
 import csv
 from tabulate import tabulate
 from numpy import mean as np_mean
 from numpy import asarray as np_asarray
 from numpy.random import randint
+from numpy import isnan
 from random import shuffle
 from scipy.stats import ttest_ind
 import pprint
@@ -77,7 +101,12 @@ def prev_frame(num_back=1):
 #  if arg_i is -1, the name receiving variable of the receiving variable is returned
 #  e.g. var_name = vname(arg_i=-1) => returns 'var_name'
 def vname(var=None, num_back=2, func_name='vname', arg_i=0, arg_name=None):
-  code = inspect.getframeinfo(prev_frame(num_back))[3][0]
+  try:
+    code = inspect.getframeinfo(prev_frame(num_back))[3][0]
+  except TypeError:
+    num_back -= 1
+    code = inspect.getframeinfo(prev_frame(num_back))[3][0]
+    func_name = 'vstr'
   var_name = ''
   if arg_i < 0:
     receiving_pattern = r'(\p{L}\w+)\s*=\s*'+func_name+r'\s*\('
@@ -118,9 +147,10 @@ def vstr(var, name=None, val=None, func_name='vstr', num_back=3, verbose=None):
   msg = None
   if not name:
     name = vname(var, num_back, func_name)
+  name = str(name)
   msg = name
   if verbose is not False:
-    msg += " (line " + str(vline(num_back)) + ") <" + var.__class__.__name__+">"
+    msg += " (line " + str(vline(num_back)) + ") <" + str(get_name(var)) +">"
   msg += ": "
   try:
     msg += pprint.pformat(val)
@@ -464,7 +494,9 @@ def random_order(num_objects, num_times):
 
 # Given t and p, is the time significantly faster or slower?
 def get_conclusion(t, p):
-  if p >= .5:
+  if isnan(t) or isnan(p):
+    conc = 'None'
+  elif p >= .5 or t == 0:
     conc = 'Same'
   elif t > 0:
     conc = 'Faster'
