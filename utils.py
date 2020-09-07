@@ -185,26 +185,29 @@ def lstr(var, name=None, val=None, max_depth=10, func_name='lstr', num_back=3, v
   if not val:
     if hasattr(var, '__len__') and not hasattr(var, 'shape'):
       val = str(len(var))
-      if not isinstance(var, dict) and len(var) > 0 and hasattr(var, '__getitem__') and not isinstance(var[0], str):
-        inner_var = var[0]
-        depth = 0
-        var_len = vlen(inner_var)
-        attr_name = 'shape'
-        while var_len > 1 and not isinstance(inner_var, str):
-          if hasattr(inner_var, 'shape'):
-            for axis in inner_var.shape:
-              val += " x "+str(axis)
-            break
-          val += " x "+str(vlen(inner_var))
-          if depth >= max_depth:
-            break
-          try:
-            inner_var = inner_var[0]
-          except (TypeError, KeyError):
-            if vwid(inner_var):
-              val += " x "+str(vwid(inner_var))
-            break
-          var_len = vlen(inner_var)
+      try:
+          if not isinstance(var, dict) and len(var) > 0 and hasattr(var, '__getitem__') and not isinstance(var[0], str):
+            inner_var = var[0]
+            depth = 0
+            var_len = vlen(inner_var)
+            attr_name = 'shape'
+            while var_len > 1 and not isinstance(inner_var, str):
+              if hasattr(inner_var, 'shape'):
+                for axis in inner_var.shape:
+                  val += " x "+str(axis)
+                break
+              val += " x "+str(vlen(inner_var))
+              if depth >= max_depth:
+                break
+              try:
+                inner_var = inner_var[0]
+              except (TypeError, KeyError):
+                if vwid(inner_var):
+                  val += " x "+str(vwid(inner_var))
+                break
+              var_len = vlen(inner_var)
+        except Exception:
+            pass
     elif hasattr(var, 'shape'):
       val = var.shape
       attr_name = 'shape'
