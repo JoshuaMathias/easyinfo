@@ -206,7 +206,7 @@ def lstr(var, name=None, val=None, max_depth=10, func_name='lstr', num_back=3, v
                   val += " x "+str(vwid(inner_var))
                 break
               var_len = vlen(inner_var)
-        except Exception:
+      except Exception:
             pass
     elif hasattr(var, 'shape'):
       val = var.shape
