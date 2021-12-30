@@ -28,7 +28,7 @@ def impstall(package):
     """ Try to import name of package. If import fails, install, then import.
     """
     mod = imp(package)
-    if package is None:
+    if mod is None:
       install(package)
       mod = imp(package)
     return mod
